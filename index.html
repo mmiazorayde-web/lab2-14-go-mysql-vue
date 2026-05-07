@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ЛР 2-14: GO + SQLite + Vue.js</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;color:#333}
+        .container{max-width:1000px;margin:0 auto;display:grid;gap:2rem;grid-template-columns:1fr 1fr}
+        .card{background:#fff;border-radius:1rem;padding:2rem;box-shadow:0 20px 40px rgba(0,0,0,.1)}
+        h1{text-align:center;color:#fff;font-size:2.5rem;margin-bottom:1rem}
+        h2{font-size:1.5rem;color:#333;margin-bottom:1rem;border-bottom:2px solid #667eea;padding-bottom:.5rem}
+        input,select{width:100%;padding:1rem;margin:.5rem 0;border:2px solid #e1e5e9;border-radius:.75rem;font-size:1rem}
+        input:focus,select:focus{border-color:#667eea;outline:none;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+        button{width:100%;padding:1rem;background:#10b981;color:white;border:none;border-radius:.75rem;font-size:1.1rem;cursor:pointer}
+        button:hover{background:#059669;transform:translateY(-2px)}
+        .students{list-style:none;max-height:400px;overflow-y:auto}
+        .student{padding:1rem;margin:1rem 0;background:#f8fafc;border-radius:.75rem;border-left:4px solid #667eea}
+        .message{padding:1rem;margin:1rem 0;border-radius:.5rem;font-weight:500}
+        .success{background:#d1fae5;border-left:4px solid #10b981;color:#065f46}
+        .error{background:#fee2e2;border-left:4px solid #ef4444;color:#991b1b}
+        @media (max-width:768px){.container{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+    <h1>🎓 Лабораторная №2-14<br><small>GO + SQLite + Vue.js</small></h1>
+    
+    <div id="app" class="container">
+        <div class="card">
+            <h2>📋 Студенты (SELECT)</h2>
+            <div v-if="loading" class="message success">⏳ Загрузка из БД...</div>
+            <ul class="students" v-else>
+                <li v-for="student in students" class="student" :key="student.id">
+                    <h3>{{ student.name }}</h3>
+                    <p>👴 {{ student.age }} лет • {{ student.grade }}</p>
+                </li>
+            </ul>
+            <div v-if="students.length" class="message success">
+                ✅ {{ students.length }} записей в SQLite
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>➕ Добавить (INSERT)</h2>
+            <form @submit.prevent="addStudent">
+                <input v-model="newStudent.name" placeholder="ФИО" required/>
+                <input v-model.number="newStudent.age" type="number" placeholder="Возраст" required min="16"/>
+                <select v-model="newStudent.grade" required>
+                    <option value="">Оценка</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                </select>
+                <button>💾 Сохранить в БД</button>
+            </form>
+            <div v-if="message" :class="['message', message.type]">{{ message.text }}</div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue
+        createApp({
+            setup() {
+                const students = ref([])
+                const newStudent = ref({name:'', age:0, grade:''})
+                const loading = ref(false)
+                const message = ref(null)
+                
+                const loadStudents = async () => {
+                    try {
+                        loading.value = true
+                        const res = await axios.get('/api/students')
+                        students.value = res.data
+                    } catch(e) {
+                        message.value = {text:'Ошибка БД', type:'error'}
+                    } finally {
+                        loading.value = false
+                    }
+                }
+                
+                const addStudent = async () => {
+                    try {
+                        await axios.post('/api/students', newStudent.value)
+                        message.value = {text:'✅ Студент добавлен!', type:'success'}
+                        newStudent.value = {name:'', age:0, grade:''}
+                        loadStudents()
+                    } catch(e) {
+                        message.value = {text:'❌ Ошибка INSERT', type:'error'}
+                    }
+                }
+                
+                onMounted(loadStudents)
+                return {students, newStudent, addStudent, loading, message}
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
